@@ -17,5 +17,5 @@ executable intuit
   other-modules:       Clausify, ParseProblem, Parsek
   other-extensions:    TypeOperators, RankNTypes
   build-depends:       base >=4, minisat >=0.1 && <0.2, containers >=0.4
-  -- hs-source-dirs:
+  hs-source-dirs:      src
   default-language:    Haskell2010
