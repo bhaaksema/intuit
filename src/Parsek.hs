@@ -101,24 +101,11 @@ module Parsek
   )
  where
 
-import Control.Monad
-  ( MonadPlus(..)
-  , guard
-  , ap
-  )
-
-import Control.Monad.Fail
-  ( MonadFail(..)
-  )
-
 import qualified Control.Applicative as CA
-
-import Data.List
-  ( union
-  , intersperse
-  )
-
+import Control.Monad (MonadPlus (..), ap, guard, replicateM)
+import Control.Monad.Fail (MonadFail (..))
 import Data.Char
+import Data.List (intersperse, union)
 
 infix  0 <?>
 infixr 1 <|>, <<|>
@@ -191,9 +178,7 @@ _              `plus` q@(Symbol _)   = q
 
 anySymbol :: Parser s s
 anySymbol =
-  Parser (\fut exp -> Symbol (\c ->
-    fut c []
-  ))
+  Parser (\fut exp -> Symbol (`fut` []))
 
 satisfy :: Show s => (s -> Bool) -> Parser s s
 satisfy pred =
@@ -214,7 +199,7 @@ label (Parser f) s =
 look :: Parser s [s]
 look =
   Parser (\fut exp ->
-    Look (\s -> fut s exp)
+    Look (`fut` exp)
   )
 
 succeeds :: Parser s a -> Parser s (Maybe a)
@@ -226,8 +211,8 @@ succeeds (Parser f) =
           sim p@(Result _ _) q xs     = q (cont p)
           sim _              _ _      = fut Nothing []
 
-          cont (Symbol f)       = Symbol (\x -> cont (f x))
-          cont (Look f)         = Look (\s -> cont (f s))
+          cont (Symbol f)       = Symbol (cont . f)
+          cont (Look f)         = Look (cont . f)
           cont (Result a p)     = fut (Just a) [] `plus` cont p
           cont (Fail exp unexp) = Fail exp unexp
 
@@ -255,20 +240,20 @@ string s =
 -- derived parsers
 
 char c    = satisfy (==c)         <?> show [c]
-noneOf cs = satisfy (\c -> not (c `elem` cs))
-oneOf cs  = satisfy (\c -> c `elem` cs)
+noneOf cs = satisfy (`notElem` cs)
+oneOf cs  = satisfy (`elem` cs)
 
-spaces    = skipMany space        <?> "white space"
-space     = satisfy (isSpace)     <?> "space"
-newline   = char '\n'             <?> "new-line"
-tab       = char '\t'             <?> "tab"
-upper     = satisfy (isUpper)     <?> "uppercase letter"
-lower     = satisfy (isLower)     <?> "lowercase letter"
-alphaNum  = satisfy (isAlphaNum)  <?> "letter or digit"
-letter    = satisfy (isAlpha)     <?> "letter"
-digit     = satisfy (isDigit)     <?> "digit"
-hexDigit  = satisfy (isHexDigit)  <?> "hexadecimal digit"
-octDigit  = satisfy (isOctDigit)  <?> "octal digit"
+spaces    = skipMany space     <?> "white space"
+space     = satisfy isSpace    <?> "space"
+newline   = char '\n'          <?> "new-line"
+tab       = char '\t'          <?> "tab"
+upper     = satisfy isUpper    <?> "uppercase letter"
+lower     = satisfy isLower    <?> "lowercase letter"
+alphaNum  = satisfy isAlphaNum <?> "letter or digit"
+letter    = satisfy isAlpha    <?> "letter"
+digit     = satisfy isDigit    <?> "digit"
+hexDigit  = satisfy isHexDigit <?> "hexadecimal digit"
+octDigit  = satisfy isOctDigit <?> "octal digit"
 anyChar   = anySymbol
 
 munch :: (s -> Bool) -> Parser s [s]
@@ -300,15 +285,13 @@ p <|> q = p `mplus` q
 (<<|>) :: Parser s a -> Parser s a -> Parser s a
 p <<|> q =
   do ma <- succeeds p
-     case ma of
-       Nothing -> q
-       Just a  -> return a
+     maybe q return ma
 
 try :: Parser s a -> Parser s a
 try p = p -- backwards compatibility with Parsec
 
 choice :: [Parser s a] -> Parser s a
-choice ps = foldr (<|>) mzero ps
+choice = foldr (<|>) mzero
 
 option :: a -> Parser s a -> Parser s a
 option x p = p <|> return x
@@ -334,7 +317,7 @@ sepBy  p sep = sepBy1 p sep <|> return []
 sepBy1 p sep = do x <- p; xs <- many (do sep; p); return (x:xs)
 
 count :: Int -> Parser s a -> Parser s [a]
-count n p = sequence (replicate n p)
+count = replicateM
 
 chainr,chainl :: Parser s a -> Parser s (a -> a -> a) -> a -> Parser s a
 chainr p op x = chainr1 p op <|> return x
@@ -344,7 +327,7 @@ chainr1,chainl1 :: Parser s a -> Parser s (a -> a -> a) -> Parser s a
 chainr1 p op = scan
  where
   scan   = do x <- p; rest x
-  rest x = (do f <- op; y <- scan; return (f x y)) <|> return x
+  rest x = (do f <- op; f x <$> scan;) <|> return x
 
 chainl1 p op = scan
  where
@@ -530,4 +513,3 @@ failEof exp err = Left (Nothing, exp, err ++ ["end of file"])
 
 -------------------------------------------------------------------------
 -- the end.
-

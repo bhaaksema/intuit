@@ -92,4 +92,3 @@ main = do
                      process (n-1) fs
 
   mapM_ (\ g -> process num_bad g) (incrementalGroups files)
-

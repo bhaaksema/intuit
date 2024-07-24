@@ -1,12 +1,9 @@
 module ParseProblem where
 
-import System.IO.Error as E
-
-import Data.List
-
 import Data.Char
-
+import Data.List
 import Parsek as P
+import System.IO.Error as E
 
 -------------------------------------------------------------------------
 -- types
@@ -73,13 +70,13 @@ showFCube :: Form -> String
 showFCube = ($ []) . go
   where
   go (p :=>: FALSE) = text "non(" . go p . text ")"
-  go (Atom a)    = text a
-  go (p :&: q)   = text "and(" . go p . text ", " . go q . text ")"
-  go (p :|: q)   = text "or(" . go p . text ", " . go q . text ")"
-  go (p :=>: q)  = text "im(" . go p . text ", " . go q . text ")"
-  go (p :<=>: q) = text "equiv(" . go p . text ", " . go q . text ")"
-  go TRUE        = text "im(tmp,tmp)"      -- ick !
-  go FALSE       = text "non(im(tmp,tmp))" -- ick !
+  go (Atom a)       = text a
+  go (p :&: q)      = text "and(" . go p . text ", " . go q . text ")"
+  go (p :|: q)      = text "or(" . go p . text ", " . go q . text ")"
+  go (p :=>: q)     = text "im(" . go p . text ", " . go q . text ")"
+  go (p :<=>: q)    = text "equiv(" . go p . text ", " . go q . text ")"
+  go TRUE           = text "im(tmp,tmp)"      -- ick !
+  go FALSE          = text "non(im(tmp,tmp))" -- ick !
 
 showIntHistGCProblem :: [Input Form] -> String
 showIntHistGCProblem = showIntHistGC . oneForm
@@ -88,13 +85,13 @@ showIntHistGC :: Form -> String
 showIntHistGC = ($ []) . go
   where
   go (p :=>: FALSE) = text "~(" . go p . text ")"
-  go (Atom a)    = text a
-  go (p :&: q)   = text "(" . go p . text " & " . go q . text ")"
-  go (p :|: q)   = text "(" . go p . text " | " . go q . text ")"
-  go (p :=>: q)  = text "(" . go p . text " => " . go q . text ")"
-  go (p :<=>: q) = text "(" . go p . text " <=> " . go q . text ")"
-  go TRUE        = text "(tmp => tmp)"   -- ick !
-  go FALSE       = text "~ (tmp => tmp)" -- ick !
+  go (Atom a)       = text a
+  go (p :&: q)      = text "(" . go p . text " & " . go q . text ")"
+  go (p :|: q)      = text "(" . go p . text " | " . go q . text ")"
+  go (p :=>: q)     = text "(" . go p . text " => " . go q . text ")"
+  go (p :<=>: q)    = text "(" . go p . text " <=> " . go q . text ")"
+  go TRUE           = text "(tmp => tmp)"   -- ick !
+  go FALSE          = text "~ (tmp => tmp)" -- ick !
 
 text s = (s ++)
 
@@ -182,8 +179,7 @@ atom =
   do token "$true"
      return TRUE
  <|>
-  do a <- name
-     return (Atom a)
+  do Atom <$> name
  <?> "atom"
 
 -- forms
@@ -191,15 +187,15 @@ atom =
 form :: P Form
 form =
   do foper ops
- <?> "formula"
- where
-  ops = [ ("<=>", \x y -> x :<=>: y)
+  <?> "formula"
+  where
+  ops = [ ("<=>", (:<=>:))
         , ("<~>", \x y -> nt (x :<=>: y))
-        , ("=>",  \x y -> x :=>: y)
-        , ("<=",  \x y -> y :=>: x)
-        , ("|",   \x y -> x :|: y)
+        , ("=>",  (:=>:))
+        , ("<=",  flip (:=>:))
+        , ("|",   (:|:))
         , ("~|",  \x y -> nt (x :|: y))
-        , ("&",   \x y -> x :&: y)
+        , ("&",   (:&:))
         , ("~&",  \x y -> nt (x :&: y))
         ]
 
@@ -281,13 +277,12 @@ parseP s =
       Right x
 
     Right _ ->
-      Left $
+      Left
         [ "Internal error: Ambiguous parse!"
         , "Please report this as a bug in the parser."
         ]
  where
-  commas op = concat . intersperse (", " ++ op ++ " ")
+  commas op = intercalate (", " ++ op ++ " ")
 
 -------------------------------------------------------------------------
 -- the end.
-

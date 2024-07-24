@@ -1,17 +1,17 @@
 {-# LANGUAGE TypeOperators #-}
 module Main where
 
-import Data.Maybe
-import Data.IORef
-import System.IO
-import System.Environment
-import MiniSat
-import ParseProblem hiding ( name )
 import Clausify
-import qualified Data.Map as M
-import qualified Data.Set as S
+import Control.Monad (when)
+import Data.IORef
 import Data.List
-import Control.Monad ( when )
+import qualified Data.Map as M
+import Data.Maybe
+import qualified Data.Set as S
+import MiniSat
+import ParseProblem hiding (name)
+import System.Environment
+import System.IO
 
 --------------------------------------------------------------------------------
 -- main
@@ -40,7 +40,7 @@ process fs =
      --putStr $ unlines $ map show fs
      --putStrLn "=== GOALIFIED FORMULAS ==="
      --putStr $ unlines $ map show (goalify fs)
-     putStrLn ("+++ Clausification...")
+     putStrLn "+++ Clausification..."
      let (cs,ics) = clausify (goalify fs)
      putStrLn ("+++ Created " ++ show (length cs) ++ " flat clauses and "
                               ++ show (length ics) ++ " implication clauses")
@@ -48,7 +48,7 @@ process fs =
      --putStr $ unlines $ map show cs
      --putStrLn "--- IMPLICATION CLAUSES ---"
      --putStr $ unlines $ map show ics
-     putStr ("+++ Proving")
+     putStr "+++ Proving"
      hFlush stdout
      proveProblem cs ics
 
@@ -91,14 +91,14 @@ proveProblem cs ics =
      let intcs = [ (lit a :-> lit b) :-> lit c
                  | ((a:->b):->c) <- ics
                  ]
-         sames = M.fromListWith (++) [ ((a:->b),[c]) | ((a:->b):->c) <- intcs ]
+         sames = M.fromListWith (++) [ (a:->b,[c]) | ((a:->b):->c) <- intcs ]
      intcs' <- sequence
                [ case cs of
                    [c] -> do return ((a:->b):->c)
                    _   -> do c <- newLit sat
                              sequence_ [ addClause sat [neg c, c1] | c1 <- cs ]
                              return ((a:->b):->c)
-               | ((a:->b),cs) <- M.toList sames
+               | (a:->b,cs) <- M.toList sames
                ]
      sequence_
        [ addClause sat [neg b, c] -- first, crude approximation
@@ -177,4 +177,3 @@ modelValueBool :: Solver -> Lit -> IO Bool
 modelValueBool sat x = (Just True ==) `fmap` modelValue sat x
 
 --------------------------------------------------------------------------------
-

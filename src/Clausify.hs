@@ -8,11 +8,11 @@ module Clausify
   )
  where
 
-import ParseProblem hiding ( name )
 import qualified Control.Applicative as CA
-import qualified Data.Map as M
-import Data.List
 import Control.Monad
+import Data.List
+import qualified Data.Map as M
+import ParseProblem hiding (name)
 
 --------------------------------------------------------------------------------
 
@@ -252,4 +252,3 @@ iclause :: ImplClause -> M ()
 iclause cl = M (\c n -> ((), c, n, List [], List [cl]))
 
 --------------------------------------------------------------------------------
-
