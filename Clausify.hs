@@ -201,13 +201,10 @@ instance Functor M where
     M (\c n -> let (x, c', n', cs, ics) = h c n in (f x, c', n', cs, ics))
 
 instance CA.Applicative M where
-  pure  = return
-  (<*>) = ap
+  pure x = M (\c n -> (x, c, n, List [], List []))
+  (<*>)  = ap
 
 instance Monad M where
-  return x =
-    M (\c n -> (x, c, n, List [], List []))
-
   M h >>= k =
     M (\c n -> let (x, c1, n1, cs1, ics1) = h c n
                    M h2                   = k x

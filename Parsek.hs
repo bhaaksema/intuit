@@ -1,5 +1,4 @@
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE MonadFailDesugaring #-}
 
 {-
 Parsek -- Copyright (c) 2003-2007, Koen Claessen
@@ -154,17 +153,14 @@ instance Functor (Parser s) where
     Parser (\fut -> f (fut . p))
 
 instance CA.Applicative (Parser s) where
-  pure  = return
-  (<*>) = ap
+  pure a = Parser (\fut -> fut a)
+  (<*>)  = ap
 
 instance CA.Alternative (Parser s) where
   empty = mzero
   (<|>) = mplus
 
 instance Monad (Parser s) where
-  return a =
-    Parser (\fut -> fut a)
-
   Parser f >>= k =
     Parser (\fut -> f (\a -> let Parser g = k a in g fut))
 
